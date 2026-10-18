@@ -1,69 +1,58 @@
 # Le Cobol
 
-Application web de facturation pour auto-entrepreneurs, écrite en COBOL pour le calcul, en PostScript pour le PDF, et servie via Apache CGI. Le frontend tourne en HTMX, sans framework JavaScript ni build step. Données stockées en ISAM natif COBOL — pas de SGBD externe.
-
-En production : **https://lecobol.com**
-
-## Pourquoi ce stack
-
-Les calculs en virgule flottante font perdre des centimes. COBOL, lui, fait de l'arithmétique décimale exacte par défaut depuis 1959, et c'est encore ce qui tourne dans la majorité des systèmes bancaires. PostScript, c'est le langage natif des imprimantes laser depuis 1985 ; toute la chaîne PDF en descend. CGI, enfin, c'est la façon la plus simple de coller un binaire derrière une URL HTTP.
-
-Le projet existe pour démontrer qu'on peut produire une app web propre, déployable et conforme RGPD avec ces trois technos plutôt qu'un stack JavaScript moderne.
-
-## Auteur
-
-Frédéric Bourouliou — full-stack solo.
-
-## Documentation
-
-- [docs/01-problem-statement.md](docs/01-problem-statement.md) — le problème
-- [docs/02-solution.md](docs/02-solution.md) — la solution
-- [docs/03-commercial-angle.md](docs/03-commercial-angle.md) — cible et modèle commercial
-- [docs/04-architecture.md](docs/04-architecture.md) — architecture
-- [docs/05-technology-stack.md](docs/05-technology-stack.md) — stack technique
-- [docs/06-key-features.md](docs/06-key-features.md) — fonctionnalités
-- [docs/07-learning-objectives.md](docs/07-learning-objectives.md) — objectifs d'apprentissage
-- [docs/08-challenges.md](docs/08-challenges.md) — risques et mitigations
-- [docs/09-schedule.md](docs/09-schedule.md) — planning
-- [docs/10-mockups.md](docs/10-mockups.md) — mockups
-- [docs/11-third-party-services.md](docs/11-third-party-services.md) — services tiers
-- [docs/12-repository-structure.md](docs/12-repository-structure.md) — structure du repo
-- [docs/13-code-examples.md](docs/13-code-examples.md) — exemples de code
-- [docs/14-roadmap.md](docs/14-roadmap.md) — roadmap
-- [docs/15-database-design.md](docs/15-database-design.md) — conception BDD
-- [docs/16-uml-sequences.md](docs/16-uml-sequences.md) — diagrammes de séquence
-
-## Quick start
-
-```bash
-sudo apt install gnucobol ghostscript apache2
-sudo a2enmod cgi
-sudo systemctl restart apache2
-cd Cobill
-make build
-```
-
-Pour le déploiement complet, voir [Cobill/deploy/README.md](Cobill/deploy/README.md).
-
-## Stack
-
-| Couche | Techno |
-|---|---|
-| Moteur de calcul | GnuCOBOL 3.x |
-| Génération PDF | PostScript + Ghostscript |
-| Serveur | Apache 2.4 + mod_cgi |
-| Frontend | HTML5 + HTMX 2.x |
-| Stockage | ISAM (fichiers indexés natifs COBOL) |
-| Infra | AWS EC2 t3.micro (eu-west-3) |
-
-JavaScript total : 14 Ko (HTMX). Aucune dépendance npm.
-
-## Licence
-
-AGPL-3.0-or-later. Voir [LICENSE](LICENSE).
-
-Le Cobol est un logiciel libre que tu peux auto-héberger pour ton activité. Si tu le modifies et que tu en exposes une version sur un serveur public, l'AGPL t'oblige à publier les sources de ta version aux utilisateurs du service.
+**An invoicing web app for French freelancers, written in COBOL.** PDFs are rendered in PostScript, the UI is HTMX, and every request is a COBOL binary behind Apache CGI. No framework, no database server, no npm.
 
 <p align="center">
-  <img src="duck.png" alt="" width="400">
+  <img src="screenshots/invoices.png" alt="Invoice list in the terminal-style web UI" width="58%">
+  &nbsp;
+  <img src="screenshots/invoice-pdf.png" alt="Invoice PDF rendered from PostScript" width="38%">
+</p>
+
+## Try it
+
+```bash
+git clone https://github.com/FredBourouliou/le-cobol && cd le-cobol
+docker build -t lecobol .
+docker run --rm -p 8080:80 lecobol
+```
+
+Open <http://localhost:8080/login.html> and log in as `admin` with the password printed in the container logs (or pass your own with `-e COBILL_PASSWORD=...`).
+
+## Why COBOL
+
+Floating point loses cents. COBOL has done exact decimal arithmetic by default since 1959, and it still runs much of the world's banking. So the app is built on it:
+
+| Layer | Technology |
+|---|---|
+| Business logic | GnuCOBOL 3.2 — fixed-point decimals, `3 × 33.33 = 99.99` exactly |
+| PDF | Hand-written PostScript, rendered by Ghostscript |
+| Server | Apache 2.4 + `mod_cgi`: one compiled binary per endpoint |
+| Frontend | HTML + HTMX 2 — the only JavaScript (17 KB gzipped) |
+| Storage | ISAM indexed files, native to COBOL |
+
+What it does: client directory with SIRENE lookup (French business registry), invoices with VAT and URSSAF contributions, PDF generation, paid / overdue tracking, session auth with sha512crypt.
+
+## Tests
+
+`Cobill/scripts/smoke-test.sh` runs ~30 end-to-end assertions over HTTP: auth gate, client CRUD, invoice arithmetic, decimal edge cases, PDF magic header, status workflow, overdue detection.
+
+```bash
+docker run -d --name lecobol -p 8080:80 -e COBILL_PASSWORD=cobill lecobol
+BASE=http://127.0.0.1:8080 Cobill/scripts/smoke-test.sh   # wipes ./data in the current directory
+```
+
+## Deploying to a server
+
+See [Cobill/deploy/README.md](Cobill/deploy/README.md) (Ubuntu + Apache + certbot, idempotent setup script).
+
+## Design docs (French)
+
+Problem statement, architecture, data model and sequence diagrams are in [`docs/`](docs/) — start with [04-architecture.md](docs/04-architecture.md) and [15-database-design.md](docs/15-database-design.md).
+
+## License
+
+Copyright (C) 2026 Frédéric Bourouliou. [AGPL-3.0-or-later](LICENSE): self-host it freely; if you run a modified version as a public service, you must publish your changes.
+
+<p align="center">
+  <img src="duck.png" alt="" width="240">
 </p>
